@@ -20,11 +20,11 @@ print('building model')
 m = ConcreteModel()
 
 m.cg = Var(thermal_gens.keys(), time_periods.keys())
-m.pg = Var(thermal_gens.keys(), time_periods.keys(), within=NonNegativeReals)  
-m.rg = Var(thermal_gens.keys(), time_periods.keys(), within=NonNegativeReals)  
+m.pg = Var(thermal_gens.keys(), time_periods.keys(), within=NonNegativeReals)
+m.rg = Var(thermal_gens.keys(), time_periods.keys(), within=NonNegativeReals)
 m.pw = Var(renewable_gens.keys(), time_periods.keys(), within=NonNegativeReals)
-m.ug = Var(thermal_gens.keys(), time_periods.keys(), within=Binary) 
-m.vg = Var(thermal_gens.keys(), time_periods.keys(), within=Binary) 
+m.ug = Var(thermal_gens.keys(), time_periods.keys(), within=Binary)
+m.vg = Var(thermal_gens.keys(), time_periods.keys(), within=Binary)
 m.wg = Var(thermal_gens.keys(), time_periods.keys(), within=Binary) 
 
 m.dg = Var(((g,s,t) for g in thermal_gens for s in gen_startup_categories[g] for t in time_periods), within=Binary) ##
@@ -61,7 +61,9 @@ for g, gen in thermal_gens.items():
         if gen['time_down_minimum'] - gen['time_down_t0'] >= 1:
             m.downtimet0[g] = sum( m.ug[g,t] for t in range(1, min(gen['time_down_minimum'] - gen['time_down_t0'], data['time_periods'])+1)) == 0 #(5)
     else:
-        raise Exception('Invalid unit_on_t0 for generator {}, unit_on_t0={}'.format(g, gen['unit_on_t0']))
+        raise Exception(
+            f"Invalid unit_on_t0 for generator {g}, unit_on_t0={gen['unit_on_t0']}"
+        )
 
     m.logicalt0[g] = m.ug[g,1] - gen['unit_on_t0'] == m.vg[g,1] - m.wg[g,1] #(6)
 
@@ -73,9 +75,7 @@ for g, gen in thermal_gens.items():
                                               )
                             ) 
                        for s,_ in enumerate(gen['startup'][:-1])) ## all but last
-    if isinstance(startup_expr, int):
-        pass
-    else:
+    if not isinstance(startup_expr, int):
         m.startupt0[g] = startup_expr == 0 #(7)
 
     m.rampupt0[g] = m.pg[g,1] + m.rg[g,1] - gen['unit_on_t0']*(gen['power_output_t0']-gen['power_output_minimum']) <= gen['ramp_up_limit'] #(8)
@@ -85,9 +85,7 @@ for g, gen in thermal_gens.items():
 
     shutdown_constr = gen['unit_on_t0']*(gen['power_output_t0']-gen['power_output_minimum']) <= gen['unit_on_t0']*(gen['power_output_maximum'] - gen['power_output_minimum']) - max((gen['power_output_maximum'] - gen['ramp_shutdown_limit']),0)*m.wg[g,1] #(10)
 
-    if isinstance(shutdown_constr, bool):
-        pass
-    else:
+    if not isinstance(shutdown_constr, bool):
         m.shutdownt0[g] = shutdown_constr
 
 m.mustrun = Constraint(thermal_gens.keys(), time_periods.keys())
